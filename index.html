@@ -131,7 +131,7 @@
   <div class="row"><span><span class="sw" style="background:#cfb181"></span>Bottom</span><b>7 × 6</b></div>
   <div class="row"><span><span class="sw" style="background:#b23a24"></span>Roof / lid</span><b>9 × 8</b></div>
   <div class="row"><span><span class="sw" style="background:#b23a24"></span>Flag C2+C3</span><b>1×6 + 2×3</b></div>
-  <div class="hint">All ¼″ plywood. <b>For the working lid:</b> don't glue the roof — attach it with 2 small hinges (or a duct-tape hinge) along the BACK edge.</div>
+  <div class="hint">All ¼″ plywood. <b>For the working lid:</b> don't glue the roof — attach it with 2 small hinges (or a duct-tape hinge) along the BACK edge. <b>For the flag:</b> pivot on a #8 bolt + washers + nylon lock nut, snugged until the arm swings stiffly; a small brad behind the raised arm parks it upright.</div>
 </div>
 
 <div id="hint">tip: open the lid, then drop a letter</div>
@@ -468,14 +468,28 @@ const flagPaddle = withEdges(new THREE.Mesh(new THREE.BoxGeometry(T, 2, 3), matR
 flagPaddle.position.set(T + 0.01, 4.6, 1.6);  // sticks forward when raised
 flagPivot.add(flagPaddle);
 
-// the pivot nail
-const nail = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.07, 0.07, 0.5, 10),
-  new THREE.MeshStandardMaterial({color:'#6e675b', roughness:0.5, metalness:0.2})
+// friction pivot: #8 bolt + washer on the outside, so the arm holds its position
+const hw = new THREE.MeshStandardMaterial({color:'#8a8375', roughness:0.45, metalness:0.3});
+const washer = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 16), hw);
+washer.rotation.z = Math.PI/2;
+washer.position.set(T/2 + 0.03, 0, 0);
+flagPivot.add(washer);
+const boltHead = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 6), hw);
+boltHead.rotation.z = Math.PI/2;
+boltHead.position.set(T/2 + 0.1, 0, 0);
+flagPivot.add(boltHead);
+
+// parking peg: a small brad in the side panel; the raised arm leans back against it
+const FLAG_UP_LEAN = -0.08;                   // raised arm parks a hair past vertical
+const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 10), hw);
+peg.rotation.z = Math.PI/2;
+// 2" up the raised arm, touching its back edge (arm is 1" wide)
+peg.position.set(
+  0.55,
+  6.4 + 2 * Math.cos(FLAG_UP_LEAN),
+  1.3 + 2 * Math.sin(FLAG_UP_LEAN) - 0.5 - 0.06
 );
-nail.rotation.z = Math.PI/2;
-nail.position.set(0.18, 0, 0);
-flagPivot.add(nail);
+sideR.add(peg);
 
 flagPivot.rotation.x = -Math.PI/2;            // start lowered (arm points backward)
 
@@ -638,7 +652,8 @@ function animate(){
   }
 
   lid.rotation.x = ease(state.lid.cur) * LID_OPEN_ANGLE;
-  flagPivot.rotation.x = -Math.PI/2 * (1 - ease(state.flag.cur));
+  // raised flag parks slightly past vertical, resting against the peg
+  flagPivot.rotation.x = -Math.PI/2 + ease(state.flag.cur) * (Math.PI/2 + FLAG_UP_LEAN);
 
   const ex = ease(state.explode.cur);
   for (const p of parts){
