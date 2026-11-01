@@ -131,7 +131,7 @@
   <div class="row"><span><span class="sw" style="background:#cfb181"></span>Bottom</span><b>7 × 6</b></div>
   <div class="row"><span><span class="sw" style="background:#b23a24"></span>Roof / lid</span><b>9 × 8</b></div>
   <div class="row"><span><span class="sw" style="background:#b23a24"></span>Flag C2+C3</span><b>1×6 + 2×3</b></div>
-  <div class="hint">All ¼″ plywood. <b>For the working lid:</b> don't glue the roof — attach it with 2 small hinges (or a duct-tape hinge) along the BACK edge. <b>For the flag:</b> pivot on a #8 bolt + washers + nylon lock nut, snugged until the arm swings stiffly; a small brad behind the raised arm parks it upright.</div>
+  <div class="hint">All ¼″ plywood. <b>For the working lid:</b> don't glue the roof — attach it with 2 small hinges (or a duct-tape hinge) along the BACK edge. <b>For the flag:</b> the roof overhangs the side ¾″, so bolt the arm through a 1″ spacer block (4 glued scrap squares) — #8×2″ bolt, washers, nylon lock nut, snug. It swings up from the front and parks back against a second scrap block.</div>
 </div>
 
 <div id="hint">tip: open the lid, then drop a letter</div>
@@ -453,9 +453,15 @@ for (const hx of [-2.6, 2.6]){
 }
 
 /* ============ flag (cut-sheet pieces C2 + C3) ============ */
-// pivots on a single loose nail into the right side, like the plans say
+// the roof overhangs the side by 3/4", so the arm rides on a 1"-thick spacer
+// block (4 glued squares of scrap ply) to clear the roof edge when raised
+const SPACER = 1.0;
+const spacer = withEdges(new THREE.Mesh(new THREE.BoxGeometry(SPACER, 1.6, 1.6), matBtm));
+spacer.position.set(T + SPACER/2, 6.4, 1.3);  // sideR local coords
+sideR.add(spacer);
+
 const flagPivot = new THREE.Group();
-flagPivot.position.set(T + 0.13, 6.4, 1.3);   // sideR local coords, on its outer face
+flagPivot.position.set(T + SPACER + 0.13, 6.4, 1.3);
 sideR.add(flagPivot);
 
 // C2 — arm, 1" x 6" x 1/4", pivot near its lower end
@@ -479,19 +485,19 @@ boltHead.rotation.z = Math.PI/2;
 boltHead.position.set(T/2 + 0.1, 0, 0);
 flagPivot.add(boltHead);
 
-// parking peg: a small brad in the side panel; the raised arm leans back against it
+// park block: a second glued stack the raised arm leans back against.
+// the flag swings up FROM THE FRONT, past vertical, and gravity holds it
+// against this block — so it never has to pass through its own stop.
 const FLAG_UP_LEAN = -0.08;                   // raised arm parks a hair past vertical
-const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 10), hw);
-peg.rotation.z = Math.PI/2;
-// 2" up the raised arm, touching its back edge (arm is 1" wide)
-peg.position.set(
-  0.55,
+const park = withEdges(new THREE.Mesh(new THREE.BoxGeometry(SPACER + 0.25, 1, 1), matBtm));
+park.position.set(
+  T + (SPACER + 0.25)/2,
   6.4 + 2 * Math.cos(FLAG_UP_LEAN),
-  1.3 + 2 * Math.sin(FLAG_UP_LEAN) - 0.5 - 0.06
+  1.3 + 2 * Math.sin(FLAG_UP_LEAN) - 0.5 - 0.5  // front face meets the arm's back edge
 );
-sideR.add(peg);
+sideR.add(park);
 
-flagPivot.rotation.x = -Math.PI/2;            // start lowered (arm points backward)
+flagPivot.rotation.x = Math.PI/2;             // start lowered (arm points forward, classic mailbox)
 
 /* ============ dimensions ============ */
 const dimGroup = new THREE.Group();
@@ -546,6 +552,7 @@ const tagList = [
   tag(bottom, 'BOTTOM <b>7″×6″</b>', V(0, 0.3, 0)),
   tag(flagArm, 'C2 ARM <b>1″×6″</b>', V(0.3, 0.6, 0)),
   tag(flagPaddle, 'C3 FLAG <b>2″×3″</b>', V(0.3, 0, 0)),
+  tag(spacer, 'SPACER <b>1″ glued scrap</b>', V(0.7, -0.6, 0)),
 ];
 
 /* ============ letters ============ */
@@ -652,8 +659,8 @@ function animate(){
   }
 
   lid.rotation.x = ease(state.lid.cur) * LID_OPEN_ANGLE;
-  // raised flag parks slightly past vertical, resting against the peg
-  flagPivot.rotation.x = -Math.PI/2 + ease(state.flag.cur) * (Math.PI/2 + FLAG_UP_LEAN);
+  // swings up from the front, parks slightly past vertical against the block
+  flagPivot.rotation.x = Math.PI/2 + ease(state.flag.cur) * (FLAG_UP_LEAN - Math.PI/2);
 
   const ex = ease(state.explode.cur);
   for (const p of parts){
