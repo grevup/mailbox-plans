@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kid-Mail Express — 3D Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6efe1; --ink:#2b241b; --ink-soft:#5c5143; --red:#b23a24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:'IBM Plex Mono',monospace;background:var(--paper);color:var(--ink)}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+
+  .dim-label{
+    font:600 14px 'IBM Plex Mono',monospace;color:var(--red);
+    background:#fff9ec;border:2px solid var(--red);
+    padding:2px 9px;border-radius:4px;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(43,36,27,.25);
+  }
+  .part-label{
+    font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--paper);
+    background:var(--ink);padding:3px 10px;border-radius:4px;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(43,36,27,.3);
+  }
+  .part-label b{color:#f5c9a0;font-weight:600}
+
+  #title{
+    position:fixed;top:18px;left:22px;z-index:5;pointer-events:none;
+  }
+  #title h1{font-family:'Fraunces',serif;font-weight:900;font-size:26px;line-height:1}
+  #title p{font-size:11px;color:var(--ink-soft);margin-top:5px;letter-spacing:.08em}
+  #title .tag{color:var(--red);font-weight:600}
+
+  #cutlist{
+    position:fixed;top:18px;right:18px;z-index:5;width:218px;
+    background:rgba(246,239,225,.93);border:2px solid var(--ink);
+    padding:12px 14px;font-size:11px;line-height:1.75;
+    box-shadow:4px 4px 0 rgba(43,36,27,.18);
+  }
+  #cutlist h2{font-family:'Fraunces',serif;font-size:14px;margin-bottom:6px}
+  #cutlist .row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #b8a98c}
+  #cutlist .row b{font-weight:600}
+  #cutlist .sw{display:inline-block;width:9px;height:9px;border:1px solid var(--ink);margin-right:5px;vertical-align:-1px}
+  #cutlist .hint{margin-top:8px;color:var(--ink-soft);font-size:10px;line-height:1.5}
+  #cutlist .hint b{color:var(--red)}
+
+  #bar{
+    position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:5;
+    display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
+  }
+  #bar button{
+    font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.06em;
+    background:var(--paper);color:var(--ink);border:2px solid var(--ink);
+    padding:9px 16px;cursor:pointer;border-radius:4px;
+    box-shadow:3px 3px 0 rgba(43,36,27,.3);transition:all .12s;
+  }
+  #bar button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(43,36,27,.3)}
+  #bar button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(43,36,27,.3)}
+  #bar button.on{background:var(--ink);color:var(--paper)}
+  #bar button.red{border-color:var(--red);color:var(--red)}
+  #bar button.red.on{background:var(--red);color:var(--paper)}
+
+  #hint{
+    position:fixed;bottom:72px;left:50%;transform:translateX(-50%);
+    font-size:11px;color:var(--ink-soft);letter-spacing:.08em;z-index:5;pointer-events:none;
+  }
+  /* ---- cut sheet overlay ---- */
+  #sheet{
+    position:fixed;inset:0;z-index:30;background:var(--paper);
+    overflow-y:auto;display:none;padding:22px 18px 40px;
+  }
+  #sheet.show{display:block}
+  #sheet .inner{max-width:680px;margin:0 auto}
+  #sheet h2{font-family:'Fraunces',serif;font-weight:900;font-size:24px;margin-bottom:4px}
+  #sheet p.lede{font-size:12px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6}
+  #sheet p.lede b{color:var(--red)}
+  #sheet svg{width:100%;height:auto;display:block}
+  #sheet .dim{fill:var(--red);font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+  #sheet .lbl{fill:var(--ink);font-size:13px;font-weight:600;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace}
+  #sheet .lbl-s{fill:var(--ink-soft);font-size:11px;font-family:'IBM Plex Mono',monospace}
+  #sheet .closer{
+    position:sticky;top:0;float:right;z-index:2;
+    font:600 13px 'IBM Plex Mono',monospace;background:var(--red);color:var(--paper);
+    border:2px solid var(--ink);border-radius:4px;padding:9px 16px;cursor:pointer;
+    box-shadow:3px 3px 0 rgba(43,36,27,.3);
+  }
+  #sheet .steps-note{
+    border-left:5px solid var(--red);background:rgba(178,58,36,.07);
+    padding:10px 14px;margin:16px 0;font-size:12px;line-height:1.7;
+  }
+  #sheet .angle-wrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:18px}
+  #sheet .angle-wrap svg{max-width:200px;flex:0 0 auto}
+  #sheet .angle-wrap p{font-size:12px;color:var(--ink-soft);flex:1;min-width:200px;line-height:1.7}
+
+  @media (max-width:760px){
+    #title h1{font-size:19px}
+    #title p{font-size:10px}
+    #hint{display:none}
+    .dim-label{font-size:17px;padding:3px 10px}
+    .part-label{font-size:14px;padding:4px 11px}
+    #cutlist{width:158px;padding:8px 10px;font-size:9.5px;line-height:1.7}
+    #cutlist h2{font-size:12px}
+    #cutlist .hint{display:none}
+    #title{max-width:calc(100% - 190px)}
+    #bar{width:100%;left:0;transform:none;bottom:12px;gap:7px;padding:0 8px}
+    #bar button{padding:8px 10px;font-size:11px;flex:0 1 auto}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="labels"></div>
+
+<div id="title">
+  <h1>Kid-Mail Express · 3D</h1>
+  <p><span class="tag">PLAN № 001</span> — all pieces ¼″ ply · drag to spin · pinch/scroll to zoom</p>
+</div>
+
+<div id="cutlist">
+  <h2>Cut list (per sheet)</h2>
+  <div class="row"><span><span class="sw" style="background:#e7d2a8"></span>Back</span><b>7½ × 10</b></div>
+  <div class="row"><span><span class="sw" style="background:#e7d2a8"></span>Front</span><b>7½ × 7</b></div>
+  <div class="row"><span><span class="sw" style="background:#d9bd8c"></span>Sides ×2</span><b>6 × 10 / 8½</b></div>
+  <div class="row"><span><span class="sw" style="background:#cfb181"></span>Bottom</span><b>7 × 6</b></div>
+  <div class="row"><span><span class="sw" style="background:#b23a24"></span>Roof / lid</span><b>9 × 8</b></div>
+  <div class="hint">All ¼″ plywood. <b>For the working lid:</b> don't glue the roof — attach it with 2 small hinges (or a duct-tape hinge) along the BACK edge.</div>
+</div>
+
+<div id="hint">tip: open the lid, then drop a letter</div>
+
+<div id="bar">
+  <button id="btnLid" class="red">⬆ Open Lid</button>
+  <button id="btnLetter">✉ Drop a Letter</button>
+  <button id="btnDims" class="on">📐 Dimensions</button>
+  <button id="btnExplode">💥 Explode</button>
+  <button id="btnSpin">↻ Auto-spin</button>
+  <button id="btnSheet" class="red">🪚 Cut Sheet</button>
+</div>
+
+<div id="sheet">
+  <div class="inner">
+    <button class="closer" id="btnSheetClose">✕ Back to 3D</button>
+    <h2>Sheet Cutting Diagram</h2>
+    <p class="lede">One 24″ × 24″ sheet = one mailbox. First rip into three strips (<b>7½″</b>, <b>6″</b>, and the ~10″ leftover), then crosscut each strip. Leave about <b>⅛″ between pieces</b> for the saw blade.</p>
+
+    <svg viewBox="0 0 660 560">
+      <defs>
+        <pattern id="grain" width="120" height="14" patternUnits="userSpaceOnUse">
+          <rect width="120" height="14" fill="#e9d3ac"/>
+          <path d="M0 7 Q 30 4 60 7 T 120 7" stroke="#d9bd8c" stroke-width="1" fill="none"/>
+        </pattern>
+      </defs>
+      <rect x="90" y="30" width="480" height="480" fill="url(#grain)" stroke="#2b241b" stroke-width="3"/>
+      <!-- STRIP A -->
+      <rect x="90" y="30" width="150" height="200" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="165" y="118" text-anchor="middle" class="lbl">A1 · BACK</text>
+      <text x="165" y="136" text-anchor="middle" class="lbl-s">7½″ × 10″</text>
+      <rect x="90" y="233" width="150" height="140" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="165" y="296" text-anchor="middle" class="lbl">A2 · FRONT</text>
+      <text x="165" y="314" text-anchor="middle" class="lbl-s">7½″ × 7″</text>
+      <rect x="90" y="376" width="140" height="120" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="160" y="430" text-anchor="middle" class="lbl">A3 · BOTTOM</text>
+      <text x="160" y="448" text-anchor="middle" class="lbl-s">7″ × 6″</text>
+      <line x1="241.5" y1="30" x2="241.5" y2="510" stroke="#b23a24" stroke-width="2" stroke-dasharray="8 5"/>
+      <!-- STRIP B -->
+      <rect x="244" y="30" width="120" height="200" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <line x1="244" y1="60" x2="364" y2="30" stroke="#b23a24" stroke-width="2" stroke-dasharray="6 4"/>
+      <text x="304" y="128" text-anchor="middle" class="lbl">B1 · SIDE</text>
+      <text x="304" y="146" text-anchor="middle" class="lbl-s">6″ × 10″</text>
+      <text x="304" y="162" text-anchor="middle" class="lbl-s">+ angle cut</text>
+      <rect x="244" y="233" width="120" height="200" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <line x1="244" y1="263" x2="364" y2="233" stroke="#b23a24" stroke-width="2" stroke-dasharray="6 4"/>
+      <text x="304" y="331" text-anchor="middle" class="lbl">B2 · SIDE</text>
+      <text x="304" y="349" text-anchor="middle" class="lbl-s">6″ × 10″</text>
+      <text x="304" y="365" text-anchor="middle" class="lbl-s">+ angle cut</text>
+      <line x1="365.5" y1="30" x2="365.5" y2="510" stroke="#b23a24" stroke-width="2" stroke-dasharray="8 5"/>
+      <!-- STRIP C -->
+      <rect x="368" y="30" width="180" height="160" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="458" y="103" text-anchor="middle" class="lbl">C1 · ROOF / LID</text>
+      <text x="458" y="121" text-anchor="middle" class="lbl-s">9″ × 8″</text>
+      <rect x="368" y="193" width="120" height="20" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="498" y="208" class="lbl-s">C2 · FLAG ARM 1″×6″</text>
+      <rect x="368" y="218" width="60" height="40" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="438" y="242" class="lbl-s">C2 · FLAG 2″×3″</text>
+      <text x="458" y="340" text-anchor="middle" class="lbl-s" font-style="italic">— spare wood —</text>
+      <text x="458" y="358" text-anchor="middle" class="lbl-s" font-style="italic">(practice nailing here!)</text>
+      <!-- dims -->
+      <line x1="90" y1="16" x2="240" y2="16" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="90" y1="10" x2="90" y2="22" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="240" y1="10" x2="240" y2="22" stroke="#b23a24" stroke-width="1.5"/>
+      <text x="165" y="11" text-anchor="middle" class="dim">7½″</text>
+      <line x1="244" y1="16" x2="364" y2="16" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="244" y1="10" x2="244" y2="22" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="364" y1="10" x2="364" y2="22" stroke="#b23a24" stroke-width="1.5"/>
+      <text x="304" y="11" text-anchor="middle" class="dim">6″</text>
+      <line x1="368" y1="16" x2="570" y2="16" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="368" y1="10" x2="368" y2="22" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="570" y1="10" x2="570" y2="22" stroke="#b23a24" stroke-width="1.5"/>
+      <text x="469" y="11" text-anchor="middle" class="dim">~10″</text>
+      <line x1="74" y1="30" x2="74" y2="510" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="68" y1="30" x2="80" y2="30" stroke="#b23a24" stroke-width="1.5"/>
+      <line x1="68" y1="510" x2="80" y2="510" stroke="#b23a24" stroke-width="1.5"/>
+      <text x="60" y="274" text-anchor="middle" class="dim" transform="rotate(-90 60 274)">24″</text>
+      <!-- legend -->
+      <line x1="90" y1="535" x2="130" y2="535" stroke="#b23a24" stroke-width="2" stroke-dasharray="8 5"/>
+      <text x="138" y="540" class="lbl-s">rip / angle cut line</text>
+      <rect x="310" y="527" width="26" height="14" fill="none" stroke="#2b241b" stroke-width="2"/>
+      <text x="344" y="540" class="lbl-s">crosscut piece</text>
+    </svg>
+
+    <div class="steps-note">
+      <b style="color:var(--red)">Cut order:</b> ① rip at 7½″ &nbsp;→&nbsp; ② rip the rest at 6″ &nbsp;→&nbsp; ③ crosscut strip A at 10″, 7″, 6″ &nbsp;→&nbsp; ④ crosscut strip B into two 10″ pieces &nbsp;→&nbsp; ⑤ cut the roof 9″×8″ from strip C &nbsp;→&nbsp; ⑥ angle cuts on the sides (below).
+    </div>
+
+    <div class="angle-wrap">
+      <svg viewBox="0 0 240 280">
+        <polygon points="60,30 180,30 180,230 60,230" fill="#e9d3ac" stroke="#2b241b" stroke-width="2.5"/>
+        <line x1="60" y1="60" x2="180" y2="30" stroke="#b23a24" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <polygon points="60,30 180,30 60,60" fill="rgba(178,58,36,.15)"/>
+        <text x="100" y="48" class="dim" font-size="10">waste ✂</text>
+        <line x1="196" y1="30" x2="196" y2="230" stroke="#b23a24" stroke-width="1.5"/>
+        <text x="209" y="134" class="dim" transform="rotate(-90 209 134)" text-anchor="middle">10″ back</text>
+        <line x1="44" y1="60" x2="44" y2="230" stroke="#b23a24" stroke-width="1.5"/>
+        <text x="33" y="150" class="dim" transform="rotate(-90 33 150)" text-anchor="middle">8½″ front</text>
+        <line x1="60" y1="248" x2="180" y2="248" stroke="#b23a24" stroke-width="1.5"/>
+        <text x="120" y="266" text-anchor="middle" class="dim">6″</text>
+        <text x="120" y="150" text-anchor="middle" class="lbl">SIDE ×2</text>
+      </svg>
+      <p><b>Side angle cut:</b> on each 6″×10″ side piece, mark 8½″ up the front edge and draw a line to the top back corner. Cut the triangle off. Flip one piece over (or stack and cut both at once) so the two sides mirror each other.</p>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ============ constants (inches) ============ */
+const T = 0.25;                 // ply thickness
+const W = 7.5;                  // outer width (front/back panels)
+const SIDE_D = 6, BACK_H = 10, FRONT_PANEL_H = 7, SIDE_FRONT_H = 8.5;
+const DEPTH = SIDE_D + 2*T;     // 6.5 outer depth
+const ROOF_W = 9, ROOF_D = 8;
+const slopeLen = Math.hypot(SIDE_D, BACK_H - SIDE_FRONT_H);           // 6.1847
+const slopeAng = Math.atan((BACK_H - SIDE_FRONT_H) / SIDE_D);         // 14.04°
+const dz = SIDE_D / slopeLen, dy = -(BACK_H - SIDE_FRONT_H) / slopeLen; // slope dir (z,y)
+const nz = -dy, ny = dz;                                               // slope normal (z,y)
+
+/* ============ renderer / scene ============ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#f3ead7');
+scene.fog = new THREE.Fog('#f3ead7', 60, 140);
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 300);
+camera.position.set(17, 13, 19);
+// narrow/portrait screens (phones): start zoomed out so the whole box + labels fit
+if (innerWidth / innerHeight < 0.9) camera.position.multiplyScalar(1.65);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+document.getElementById('labels').appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 4.8, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 9;
+controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.55;
+
+/* ============ lights / ground ============ */
+scene.add(new THREE.HemisphereLight('#fffdf5', '#c9b490', 1.05));
+const sun = new THREE.DirectionalLight('#fff4e0', 2.0);
+sun.position.set(14, 24, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
+sun.shadow.camera.top = 18;  sun.shadow.camera.bottom = -18;
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+
+// fill from behind so the hinge hardware on the back reads clearly
+const fill = new THREE.DirectionalLight('#f2e8d8', 0.9);
+fill.position.set(-10, 16, -14);
+scene.add(fill);
+
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(60, 64),
+  new THREE.ShadowMaterial({opacity: 0.22})
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(60, 60, '#d6c8ab', '#e4d8bd');
+grid.position.y = -0.01;
+scene.add(grid);
+
+/* ============ materials ============ */
+function wood(hex){
+  return new THREE.MeshStandardMaterial({color: hex, roughness: 0.82, metalness: 0});
+}
+const matFace  = wood('#e7d2a8');
+const matSide  = wood('#d9bd8c');
+const matBtm   = wood('#cfb181');
+const matRoof  = new THREE.MeshStandardMaterial({color:'#b23a24', roughness:0.6});
+const edgeMat  = new THREE.LineBasicMaterial({color:'#4a3b28'});
+
+function withEdges(mesh){
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 20), edgeMat);
+  mesh.add(e);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/* ============ the box ============ */
+const box = new THREE.Group();
+scene.add(box);
+
+// explodable parts: {obj, dir}
+const parts = [];
+
+// BACK 7.5 x 10
+const back = withEdges(new THREE.Mesh(new THREE.BoxGeometry(W, BACK_H, T), matFace));
+back.position.set(0, BACK_H/2, -(SIDE_D/2 + T/2));
+box.add(back); parts.push({obj:back, dir:new THREE.Vector3(0,0,-4.5)});
+
+// FRONT 7.5 x 7
+const front = withEdges(new THREE.Mesh(new THREE.BoxGeometry(W, FRONT_PANEL_H, T), matFace));
+front.position.set(0, FRONT_PANEL_H/2, SIDE_D/2 + T/2);
+box.add(front); parts.push({obj:front, dir:new THREE.Vector3(0,0,4.5)});
+
+// SIDES — trapezoid: back edge 10, front edge 8.5, depth 6
+function sideGeo(){
+  const s = new THREE.Shape();
+  // shape (u,v); after rotateY(+90deg) world z = -u
+  s.moveTo(-SIDE_D/2, 0);               // front bottom  (u=-3 -> z=+3)
+  s.lineTo( SIDE_D/2, 0);               // back bottom
+  s.lineTo( SIDE_D/2, BACK_H);          // back top (10)
+  s.lineTo(-SIDE_D/2, SIDE_FRONT_H);    // front top (8.5)
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, {depth: T, bevelEnabled: false});
+  g.rotateY(Math.PI/2);                 // extrusion now runs along +x
+  return g;
+}
+const sideL = withEdges(new THREE.Mesh(sideGeo(), matSide));
+sideL.position.set(-W/2, 0, 0);         // occupies x: -3.75..-3.5
+box.add(sideL); parts.push({obj:sideL, dir:new THREE.Vector3(-4.5,0,0)});
+
+const sideR = withEdges(new THREE.Mesh(sideGeo(), matSide));
+sideR.position.set(W/2 - T, 0, 0);      // occupies x: 3.5..3.75
+box.add(sideR); parts.push({obj:sideR, dir:new THREE.Vector3(4.5,0,0)});
+
+// BOTTOM 7 x 6, sits inside flush with lower edges
+const bottom = withEdges(new THREE.Mesh(new THREE.BoxGeometry(W - 2*T, T, SIDE_D), matBtm));
+bottom.position.set(0, T/2, 0);
+box.add(bottom); parts.push({obj:bottom, dir:new THREE.Vector3(0,-3.2,0)});
+
+// ROOF / LID — hinged along the back edge, like the real build:
+// the roof's back edge sits flush with the back panel's outer face, and each
+// hinge is a barrel on the seam with one leaf screwed to the back panel
+// (stays put) and one leaf screwed to the roof (swings with the lid).
+const zBackFace = -(SIDE_D/2 + T);            // back panel outer face, z = -3.25
+const tBack = T / dz;                         // slope distance from side corner back to that face
+const yRoofUnderBack = BACK_H - dy * tBack;   // roof underside height at the back edge (~10.06)
+const yRoofTopBack = yRoofUnderBack + ny * T; // roof top surface at the back edge (~10.30)
+
+// pivot = hinge barrel axis, right on the outside corner of the seam
+const pivot = new THREE.Vector3(0, yRoofTopBack - 0.025, zBackFace - 0.06);
+const lid = new THREE.Group();
+lid.position.copy(pivot);
+box.add(lid);
+parts.push({obj:lid, dir:new THREE.Vector3(0,4.2,0)});
+
+// roof center = back-edge midpoint + half depth down-slope + half thickness along normal
+const roofCenter = new THREE.Vector3(
+  0,
+  yRoofUnderBack + dy * (ROOF_D/2) + ny * (T/2),
+  zBackFace + dz * (ROOF_D/2) + nz * (T/2)
+);
+const roof = withEdges(new THREE.Mesh(new THREE.BoxGeometry(ROOF_W, T, ROOF_D), matRoof));
+roof.position.copy(roofCenter.sub(pivot));
+roof.rotation.x = slopeAng;
+lid.add(roof);
+
+/* --- hinge hardware --- */
+const steel = new THREE.MeshStandardMaterial({color:'#aba396', roughness:0.45, metalness:0.25});
+const steelDark = new THREE.MeshStandardMaterial({color:'#6e675b', roughness:0.55, metalness:0.2});
+const LEAF_W = 1.1, LEAF_T = 0.06, LEAF_L = 1.12;
+
+for (const hx of [-2.6, 2.6]){
+  // barrel: centered exactly on the pivot axis, rides with the lid
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, LEAF_W, 16), steel);
+  barrel.rotation.z = Math.PI/2;
+  barrel.position.set(hx, 0, 0);
+  barrel.castShadow = true;
+  lid.add(barrel);
+  for (const s of [-1, 1]){ // pin end-caps
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.14, 12), steelDark);
+    cap.rotation.z = Math.PI/2;
+    cap.position.set(hx + s * (LEAF_W/2 + 0.06), 0, 0);
+    lid.add(cap);
+  }
+
+  // fixed leaf: screwed flat onto the back panel, top edge meeting the barrel
+  const leafB = new THREE.Mesh(new THREE.BoxGeometry(LEAF_W, LEAF_L, LEAF_T), steel);
+  leafB.position.set(hx, (pivot.y - LEAF_L/2) - BACK_H/2, -(T/2 + LEAF_T/2));
+  leafB.castShadow = true;
+  back.add(leafB);
+  for (const sy of [-0.33, 0.1]){ // screw heads
+    const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 10), steelDark);
+    sc.rotation.x = Math.PI/2;
+    sc.position.set(hx, (pivot.y - LEAF_L/2) - BACK_H/2 + sy, -(T/2 + LEAF_T) - 0.012);
+    back.add(sc);
+  }
+
+  // moving leaf: screwed flat onto the roof top at the back edge, swings with the lid
+  const leafR = new THREE.Mesh(new THREE.BoxGeometry(LEAF_W, LEAF_T, LEAF_L), steel);
+  leafR.position.set(hx, T/2 + LEAF_T/2, -ROOF_D/2 + LEAF_L/2 - 0.06);
+  leafR.castShadow = true;
+  roof.add(leafR);
+  for (const sz of [-0.3, 0.13]){ // screw heads
+    const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 10), steelDark);
+    sc.position.set(hx, T/2 + LEAF_T + 0.012, -ROOF_D/2 + LEAF_L/2 - 0.06 + sz);
+    roof.add(sc);
+  }
+}
+
+/* ============ dimensions ============ */
+const dimGroup = new THREE.Group();
+box.add(dimGroup);
+const dimMat = new THREE.LineBasicMaterial({color:'#b23a24'});
+
+function makeLabel(text, cls='dim-label'){
+  const el = document.createElement('div');
+  el.className = cls;
+  el.innerHTML = text;
+  return new CSS2DObject(el);
+}
+function dim(parent, a, b, off, text){
+  const A = a.clone().add(off), B = b.clone().add(off);
+  const pts = [a, A, A, B, B, b];   // tick, main line, tick
+  const g = new THREE.BufferGeometry().setFromPoints(pts);
+  const line = new THREE.LineSegments(g, dimMat);
+  const label = makeLabel(text);
+  label.position.copy(A.clone().add(B).multiplyScalar(0.5));
+  line.add(label);
+  parent.add(line);
+}
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+
+dim(dimGroup, V(-W/2,0, DEPTH/2), V(W/2,0, DEPTH/2), V(0,0,1.4), '7½″ wide');
+dim(dimGroup, V(W/2,0,-DEPTH/2), V(W/2,0, DEPTH/2), V(1.6,0,0), '6½″ deep');
+dim(dimGroup, V(-W/2,0,-DEPTH/2), V(-W/2,BACK_H,-DEPTH/2), V(-1.5,0,-0.4), '10″ back');
+dim(dimGroup, V(-W/2,0, DEPTH/2), V(-W/2,FRONT_PANEL_H, DEPTH/2), V(-1.5,0,0.6), '7″ front');
+// slot: front top (y=7) to roof underside above the front face (y≈8.47)
+const slotTop = BACK_H - (BACK_H - SIDE_FRONT_H) * ((DEPTH/2 + SIDE_D/2) / SIDE_D);
+dim(dimGroup, V(W/2+0.1,FRONT_PANEL_H, DEPTH/2), V(W/2+0.1, slotTop, DEPTH/2), V(1.2,0,0.8), '1½″ mail slot');
+
+// roof dims ride along with the lid
+const roofDims = new THREE.Group();
+roof.add(roofDims);
+dim(roofDims, V(-ROOF_W/2, T/2, ROOF_D/2), V(ROOF_W/2, T/2, ROOF_D/2), V(0,0.4,1.1), '9″');
+dim(roofDims, V(ROOF_W/2, T/2, -ROOF_D/2), V(ROOF_W/2, T/2, ROOF_D/2), V(1.1,0.4,0), '8″');
+
+// part name tags
+function tag(target, text, localPos){
+  const l = makeLabel(text, 'part-label');
+  l.position.copy(localPos);
+  target.add(l);
+  return l;
+}
+const tagList = [
+  tag(front,  'FRONT <b>7½″×7″</b>',  V(0, -1.2, 0.2)),
+  tag(back,   'BACK <b>7½″×10″</b>',   V(0, 2.5, -0.2)),
+  tag(sideR,  'SIDE <b>6″×10″</b>',   V(T+0.1, 5.2, 0)),
+  tag(sideR,  '<b>8½″ front edge</b>', V(T+0.1, 4.6, 2.5)),
+  tag(roof,   'ROOF·LID <b>9″×8″</b>', V(0, 0.4, -1.5)),
+  tag(bottom, 'BOTTOM <b>7″×6″</b>', V(0, 0.3, 0)),
+];
+
+/* ============ letters ============ */
+const letters = [];
+let activeDrop = null;
+function makeLetter(){
+  const g = new THREE.Group();
+  const env = withEdges(new THREE.Mesh(
+    new THREE.BoxGeometry(4.4, 0.07, 3.1),
+    new THREE.MeshStandardMaterial({color:'#fdfaf2', roughness:0.9})
+  ));
+  g.add(env);
+  // red airmail stripe
+  const stripe = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.4, 0.5),
+    new THREE.MeshBasicMaterial({color:'#b23a24', side:THREE.DoubleSide})
+  );
+  stripe.rotation.x = -Math.PI/2;
+  stripe.position.set(0, 0.045, -1.1);
+  g.add(stripe);
+  return g;
+}
+function dropLetter(){
+  if (activeDrop) return;
+  const l = makeLetter();
+  box.add(l);
+  const restY = 0.45 + letters.length * 0.14;
+  const restRotZ = (Math.random() - 0.5) * 0.35;
+  activeDrop = {
+    obj: l, t: 0, restRotZ,
+    keys: [
+      {t:0.00, p:V(0, 13.5, 8.0), rx:-0.15},
+      {t:0.38, p:V(0, 9.4, 4.8),  rx:-0.85},
+      {t:0.58, p:V(0, 7.7, 3.1),  rx:-1.15},
+      {t:1.00, p:V(0, restY, 0.3), rx:-1.45},
+    ]
+  };
+  letters.push(l);
+  if (letters.length > 6){ box.remove(letters.shift()); }
+}
+
+/* ============ UI state / tweens ============ */
+const state = {
+  lid:    {cur:0, tgt:0, speed:3.2},   // 0 closed .. 1 open
+  explode:{cur:0, tgt:0, speed:2.4},
+  dims:   {on:true},
+  spin:   false,
+};
+const LID_OPEN_ANGLE = -1.72; // ~98° up from closed
+
+const btnLid = document.getElementById('btnLid');
+const btnLetter = document.getElementById('btnLetter');
+const btnDims = document.getElementById('btnDims');
+const btnExplode = document.getElementById('btnExplode');
+const btnSpin = document.getElementById('btnSpin');
+
+btnLid.onclick = () => {
+  state.lid.tgt = state.lid.tgt > 0.5 ? 0 : 1;
+  btnLid.classList.toggle('on', state.lid.tgt > 0.5);
+  btnLid.textContent = state.lid.tgt > 0.5 ? '⬇ Close Lid' : '⬆ Open Lid';
+};
+btnLetter.onclick = dropLetter;
+btnDims.onclick = () => {
+  state.dims.on = !state.dims.on;
+  btnDims.classList.toggle('on', state.dims.on);
+};
+btnExplode.onclick = () => {
+  state.explode.tgt = state.explode.tgt > 0.5 ? 0 : 1;
+  btnExplode.classList.toggle('on', state.explode.tgt > 0.5);
+};
+btnSpin.onclick = () => {
+  state.spin = !state.spin;
+  btnSpin.classList.toggle('on', state.spin);
+};
+document.getElementById('btnSheet').onclick = () =>
+  document.getElementById('sheet').classList.add('show');
+document.getElementById('btnSheetClose').onclick = () =>
+  document.getElementById('sheet').classList.remove('show');
+
+// remember each part's home position
+for (const p of parts) p.home = p.obj.position.clone();
+
+/* ============ loop ============ */
+const clock = new THREE.Clock();
+const ease = t => t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  // tweens
+  for (const k of ['lid','explode']){
+    const s = state[k];
+    const d = s.tgt - s.cur;
+    if (Math.abs(d) > 0.0005) s.cur += Math.sign(d) * Math.min(Math.abs(d), s.speed*dt);
+    else s.cur = s.tgt;
+  }
+
+  lid.rotation.x = ease(state.lid.cur) * LID_OPEN_ANGLE;
+
+  const ex = ease(state.explode.cur);
+  for (const p of parts){
+    p.obj.position.copy(p.home).addScaledVector(p.dir, ex);
+  }
+
+  // visibility of annotations
+  dimGroup.visible = state.dims.on;
+  roofDims.visible = state.dims.on;
+  for (const t of tagList) t.visible = state.dims.on;
+
+  // letter drop
+  if (activeDrop){
+    activeDrop.t += dt / 2.1;
+    const t = Math.min(activeDrop.t, 1);
+    const ks = activeDrop.keys;
+    let i = 0;
+    while (i < ks.length-2 && t > ks[i+1].t) i++;
+    const a = ks[i], b = ks[i+1];
+    const f = ease((t - a.t) / (b.t - a.t));
+    activeDrop.obj.position.lerpVectors(a.p, b.p, f);
+    activeDrop.obj.rotation.x = a.rx + (b.rx - a.rx) * f;
+    if (t >= 1){
+      activeDrop.obj.rotation.z = activeDrop.restRotZ;
+      activeDrop = null;
+    }
+  }
+
+  if (state.spin) box.rotation.y += dt * 0.35;
+  grid.rotation.y = box.rotation.y;
+
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
